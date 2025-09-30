@@ -1,24 +1,15 @@
 name: Build Android NDK (AOSP) for ARM64 (host)
 
-# Manual trigger (safe) — change to push/pull_request if you prefer auto-runs.
 on:
   workflow_dispatch:
 
 jobs:
   build-ndk:
-    # Use an ARM64 GitHub-hosted runner (public repos) or a self-hosted arm64 runner.
-    # If you don't have access to GitHub's arm runners, use a self-hosted arm64 runner.
     runs-on: ubuntu-22.04-arm
-
-    # Increase timeout if your runner supports it (default 6 hours). Adjust as needed.
-    timeout-minutes: 720
-
-    env:
-      # parallelism for repo sync / build steps
-      JOBS: ${{ runner.cores }}
+    timeout-minutes: 720  # Increase if needed for long builds
 
     steps:
-      - name: Install APT / system packages (modern equivalents)
+      - name: Install system packages
         run: |
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
@@ -27,7 +18,7 @@ jobs:
             libncurses-dev ca-certificates wget openjdk-17-jdk \
             python3-distutils python3-venv python3-pip
 
-      - name: Setup Python 3.11 (required by ndk pyproject)
+      - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
@@ -37,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip setuptools
           python -m pip install poetry
 
-      - name: Install repo tool (Google 'repo')
+      - name: Install repo tool
         run: |
           sudo curl -fsSLo /usr/local/bin/repo \
             https://commondatastorage.googleapis.com/git-repo-downloads/repo
@@ -48,35 +39,29 @@ jobs:
         run: |
           mkdir aosp
           cd aosp
-          # master-ndk pulls the NDK-focused manifest. --partial-clone to reduce bandwidth.
           repo init -u https://android.googlesource.com/platform/manifest -b master-ndk --partial-clone
-          # Sync only what manifest requires; parallelize with JOBS.
           repo sync -j$(nproc) --no-clone-bundle
 
-      - name: Install Python deps via Poetry in the ndk tree
+      - name: Install Python dependencies via Poetry
         run: |
           cd aosp/ndk
-          # Create the poetry venv and install pinned dependencies from pyproject/poetry.lock
           poetry install --no-interaction
-          # Activate the poetry venv for subsequent commands in this shell
           poetry run python --version
           poetry run pip --version
 
-      - name: Build the NDK (no tests, package the result)
+      - name: Build and package the NDK
         run: |
           cd aosp/ndk
-          # Use checkbuild.py; skip tests to reduce time (remove --no-build-tests if you want tests)
-          # --package will produce the packaged zip artifacts under ndk/dist (packaging is slow)
-          poetry run python checkbuild.py --no-build-tests --package --jobs $JOBS
+          # Build without tests to speed up initial runs
+          poetry run python checkbuild.py --no-build-tests --package --jobs $(nproc)
 
-      - name: Locate produced NDK zip(s)
+      - name: List built artifacts
         run: |
           cd aosp/ndk
           echo "dist contents:"
           ls -lah dist || true
           echo "out contents (if present):"
           ls -lah out || true
-          # show any packaged nDK zips
           find . -type f -name "android-ndk-*.zip" -print || true
 
       - name: Upload packaged NDK artifact(s)
