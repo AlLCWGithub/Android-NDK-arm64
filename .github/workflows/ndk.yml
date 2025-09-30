@@ -6,7 +6,7 @@ on:
 jobs:
   build-ndk:
     runs-on: ubuntu-latest
-    timeout-minutes: 360  # Adjust as needed
+    timeout-minutes: 360  # Adjust if needed
 
     steps:
       - name: Install system packages
@@ -16,7 +16,7 @@ jobs:
             git curl bison flex make pbzip2 texinfo uuid-runtime zip unzip \
             build-essential cmake ninja-build clang lld pkg-config libssl-dev \
             libncurses-dev ca-certificates wget openjdk-17-jdk \
-            python3-distutils python3-venv python3-pip
+            python3-venv python3-pip
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v4
