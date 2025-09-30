@@ -1,12 +1,12 @@
-name: Build Android NDK (AOSP) for ARM64 (host)
+name: Build Android NDK (x86_64 host → ARM64 target)
 
 on:
   workflow_dispatch:
 
 jobs:
   build-ndk:
-    runs-on: ubuntu-22.04-arm
-    timeout-minutes: 720  # Increase if needed for long builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # Adjust as needed
 
     steps:
       - name: Install system packages
@@ -35,7 +35,7 @@ jobs:
           sudo chmod a+rx /usr/local/bin/repo
           repo --version
 
-      - name: Init AOSP manifest (master-ndk) and sync platform/ndk
+      - name: Init AOSP manifest and sync NDK
         run: |
           mkdir aosp
           cd aosp
@@ -49,11 +49,11 @@ jobs:
           poetry run python --version
           poetry run pip --version
 
-      - name: Build and package the NDK
+      - name: Build and package NDK for ARM64 target
         run: |
           cd aosp/ndk
-          # Build without tests to speed up initial runs
-          poetry run python checkbuild.py --no-build-tests --package --jobs $(nproc)
+          # Use --arch=arm64 to cross-build for ARM64 target
+          poetry run python checkbuild.py --no-build-tests --package --arch arm64 --jobs $(nproc)
 
       - name: List built artifacts
         run: |
@@ -67,7 +67,7 @@ jobs:
       - name: Upload packaged NDK artifact(s)
         uses: actions/upload-artifact@v4
         with:
-          name: ndk-packages
+          name: ndk-arm64
           path: |
             aosp/ndk/dist/*.zip
             aosp/ndk/out/**/*.zip
