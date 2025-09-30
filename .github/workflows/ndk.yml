@@ -1,22 +1,24 @@
 name: Build NDK for ARM64
 
-on: 
+on:
   workflow_dispatch:  # allows manual run
 
 jobs:
   build-ndk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y git python3 ninja-build cmake build-essential openjdk-17-jdk wget unzip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git python3 ninja-build cmake build-essential \
+            openjdk-17-jdk wget unzip
 
       - name: Clone llvm_android
         run: |
           git clone https://android.googlesource.com/toolchain/llvm_android
           cd llvm_android
-          git checkout ndk-release-r26
+          # No need to checkout a specific branch; using the main branch
+          # git checkout ndk-release-r26  # This line is no longer needed
 
       - name: Build LLVM for ARM64 host
         run: |
@@ -27,12 +29,15 @@ jobs:
         run: |
           git clone https://android.googlesource.com/platform/ndk
           cd ndk
+          # Checkout the appropriate NDK version
           git checkout ndk-release-r26
 
       - name: Package NDK
         run: |
           cd ndk
-          python3 package.py --out /tmp/ndk-out --toolchain-dir ../llvm_android/out
+          python3 package.py \
+            --out /tmp/ndk-out \
+            --toolchain-dir ../llvm_android/out
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
